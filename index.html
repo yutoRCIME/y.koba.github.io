@@ -1,0 +1,638 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>生物系研究支援ツール</title>
+<style>
+  :root{
+    --sidebar:#2f3a45;
+    --accent:#16a085;
+    --card:#f4f7f6;
+    --muted:#7a8a89;
+  }
+  body{
+    margin:0;
+    font-family: "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
+    display:flex;
+    height:100vh;
+    color:#17202a;
+  }
+  .sidebar{
+    width:220px;
+    background:var(--sidebar);
+    color:white;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:18px 10px;
+    box-sizing:border-box;
+  }
+  .logo{
+    font-weight:700;
+    margin-bottom:20px;
+  }
+  .menu-btn{
+    width:180px;
+    padding:10px 12px;
+    margin:8px 0;
+    background:#34495e;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .menu-btn.active{ background:var(--accent); box-shadow:0 2px 6px rgba(0,0,0,0.2)}
+  .content{
+    flex:1;
+    padding:18px;
+    overflow:auto;
+    background:linear-gradient(180deg,#fff,#f6fbfb);
+  }
+  h2{ margin-top:0;}
+  .card{
+    background:var(--card);
+    border-radius:10px;
+    padding:12px;
+    margin-bottom:16px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+  }
+  label{ display:inline-block; width:140px; color:var(--muted) }
+  input[type="number"], select, input[type="time"], input[type="datetime-local"]{
+    padding:6px 8px;
+    border-radius:6px;
+    border:1px solid #dfe7e6;
+    width:160px;
+    box-sizing:border-box;
+  }
+  .row{ margin:8px 0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  button.primary{
+    background:var(--accent);
+    border:none;
+    color:white;
+    padding:8px 12px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .result{ background:white; padding:10px; border-radius:8px; border:1px solid #e6efee; margin-top:10px; }
+  .small{ font-size:0.9rem; color:var(--muted) }
+  table{ width:100%; border-collapse:collapse; margin-top:8px }
+  th,td{ padding:6px 8px; border-bottom:1px solid #eef6f5; text-align:left }
+  .muted{ color:var(--muted) }
+  .flex-between{ display:flex; justify-content:space-between; align-items:center }
+  .pipette-badge{ display:inline-block; padding:4px 8px; border-radius:6px; background:#fff; border:1px solid #d6eae6; margin-right:6px; }
+  .danger{ color:#c0392b }
+  .ok{ color:#16a085 }
+</style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">Lab Helper</div>
+    <button class="menu-btn active" data-target="weigh">試薬秤量支援</button>
+    <button class="menu-btn" data-target="adjust">試薬調整支援</button>
+    <button class="menu-btn" data-target="culture">培養時間支援</button>
+    <div style="flex:1"></div>
+    <div class="small">作成日: 自動</div>
+  </div>
+
+  <div class="content">
+    <!-- 試薬秤量支援 -->
+    <section id="weigh" class="card section">
+      <h2>試薬秤量支援</h2>
+      <div class="small">モードを選択して入力してください。</div>
+
+      <div style="margin-top:10px">
+        <label><input type="radio" name="mode" value="massFromConc" checked> 濃度＋体積 → 質量</label><br>
+        <label><input type="radio" name="mode" value="volFromMass"> 質量＋濃度 → 必要溶媒量（体積）</label>
+      </div>
+
+      <!-- mode: massFromConc -->
+      <div id="mode-massFromConc" style="margin-top:12px">
+        <div class="row">
+          <label>モル質量 (g/mol)</label>
+          <input type="number" id="mw" step="any" placeholder="例: 180.16">
+        </div>
+
+        <div class="row">
+          <label>濃度</label>
+          <input type="number" id="conc_value" step="any" placeholder="例: 10"> 
+          <select id="conc_unit">
+            <option value="1">M</option>
+            <option value="1e-3">mM</option>
+            <option value="1e-6">µM</option>
+            <option value="1e-9">nM</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label>体積</label>
+          <input type="number" id="vol_value" step="any" placeholder="例: 100"> 
+          <select id="vol_unit">
+            <option value="1e-3">mL</option>
+            <option value="1e-6">µL</option>
+            <option value="1e-9">nL</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <button class="primary" id="calcMassBtn">必要質量を計算</button>
+        </div>
+
+        <div id="massOutput" class="result muted"></div>
+      </div>
+
+      <!-- mode: volFromMass -->
+      <div id="mode-volFromMass" style="margin-top:12px; display:none;">
+        <div class="row">
+          <label>質量</label>
+          <input type="number" id="mass_value" step="any" placeholder="例: 50"> 
+          <select id="mass_unit">
+            <option value="1">g</option>
+            <option value="1e-3">mg</option>
+            <option value="1e-9">ng</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label>モル質量</label>
+          <input type="number" id="mw2" step="any" placeholder="g/mol">
+        </div>
+
+        <div class="row">
+          <label>濃度</label>
+          <input type="number" id="conc2_value" step="any" placeholder="例: 10"> 
+          <select id="conc2_unit">
+            <option value="1">M</option>
+            <option value="1e-3">mM</option>
+            <option value="1e-6">µM</option>
+            <option value="1e-9">nM</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <button class="primary" id="calcVolBtn">必要体積を計算</button>
+        </div>
+
+        <div id="volOutput" class="result muted"></div>
+      </div>
+
+    </section>
+
+    <!-- 試薬調整支援 -->
+    <section id="adjust" class="card section" style="display:none;">
+      <h2>試薬調整支援（混合・希釈）</h2>
+      <div class="small">複数の試薬を混合して最終体積と各成分の最終濃度を確認します。各試薬の「初濃度」と「（任意で）最終濃度を狙う値」を入力できます。最終濃度を指定した試薬は必要量を計算し、残りを溶媒とします。</div>
+
+      <div class="card" style="background:#fff">
+        <div class="row">
+          <label>最終全量</label>
+          <input type="number" id="mix_total_value" placeholder="100" step="any">
+          <select id="mix_total_unit">
+            <option value="1e-3">mL</option>
+            <option value="1e-6" selected>µL</option>
+            <option value="1e-9">nL</option>
+          </select>
+        </div>
+        <div style="margin-top:8px">
+          <table id="reagentTable">
+            <thead>
+              <tr><th>試薬名</th><th>初濃度（例：10 mM）</th><th>狙いの終濃度（空欄可）</th><th>追加量（µL）</th><th>操作</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div style="margin-top:8px">
+            <button class="primary" id="addReagent">試薬行を追加</button>
+            <button id="calcMix" class="primary" style="background:#2d7a62">計算</button>
+          </div>
+          <div id="mixResult" class="result muted"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- プログラム培養支援 -->
+    <section id="culture" class="card section" style="display:none;">
+      <h2>プログラム培養支援</h2>
+      <div class="small">培養液の投入時刻、回収時刻、培養条件からプログラム培養時の設定を表示します。</div>
+
+      <div class="card" style="background:#fff">
+        <div class="row">
+          <label>投入時刻</label>
+          <input type="time" id="culture_start">
+        </div>
+        <div class="row">
+          <label>回収時刻</label>
+          <input type="time" id="culture_end">
+        </div>
+        <div class="row">
+          <label>培養温度 (℃)</label>
+          <input type="number" id="culture_temp" step="any" placeholder="例: 30" value="30">
+        </div>
+        <div class="row">
+          <label>回転速度 (rpm)</label>
+          <input type="number" id="culture_rpm" placeholder="例: 200" value="200">
+        </div>
+        <div class="row">
+          <label>培養時間 (hour)</label>
+          <input type="number" id="culture_duration" placeholder="例: 8" value="8">
+        </div>
+
+        <div class="row">
+          <button class="primary" id="calcCulture">設定を表示</button>
+        </div>
+
+        <div id="culturePlan" class="result muted"></div>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+/* ---------------------------
+  ユーティリティ関数
+----------------------------*/
+const pipettes = [
+  {name:'P2', max:2},
+  {name:'P10', max:10},
+  {name:'P20', max:20},
+  {name:'P100', max:100},
+  {name:'P200', max:200},
+  {name:'P1000', max:1000}
+];
+
+function choosePipetteSingle(ul){
+  if(ul <= 0) return '—';
+  if(ul > 10000) return 'メスシリンダー推奨';
+  // try smallest pipette with max >= ul
+  for(const p of pipettes){
+    if(ul <= p.max) return p.name;
+  }
+  // if <=10000 use P1000 multiple times
+  const times = Math.ceil(ul / 1000);
+  if(ul <= 10000) return `P1000 × ${times}回（合計 ${times*1000}µL を分注）`;
+  return 'メスシリンダー推奨';
+}
+
+// 有効数字2桁で主成分と残りに分ける
+function splitFor2SigFigs(ul){
+  // only meaningful for ul < 10000 and >= 1
+  if(ul < 1) return null;
+  // determine two-significant-figure rounding of integer ul
+  // convert to number
+  const v = Math.round(ul); // integer µL
+  if(v < 10) return null; // small volumes no need
+  // compute 2 significant figure rounding
+  const pow = Math.floor(Math.log10(v));
+  const factor = Math.pow(10, pow-1); // to keep 2 sig figs
+  const main = Math.round(v / factor) * factor;
+  // ensure main <= v ; if rounding made it > v, adjust downward by factor
+  let mainAdj = main;
+  if(mainAdj > v) mainAdj = mainAdj - factor;
+  if(mainAdj < 0) mainAdj = 0;
+  const rest = v - mainAdj;
+  if(mainAdj === 0 || rest === 0) return null;
+  return {main: mainAdj, rest: rest};
+}
+
+function formatMassAuto(g){
+  if(g >= 1) return `${roundTo(g, 3)} g`;
+  if(g >= 0.001) return `${roundTo(g*1000, 2)} mg`;
+  return `${roundTo(g*1e6, 1)} ng`;
+}
+function roundTo(x, digits){
+  const p = Math.pow(10,digits);
+  return Math.round(x*p)/p;
+}
+
+/* ---------------------------
+  DOM: メニュー切替
+----------------------------*/
+document.querySelectorAll('.menu-btn').forEach(b=>{
+  b.addEventListener('click', ()=> {
+    document.querySelectorAll('.menu-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.section').forEach(s=> s.style.display='none');
+    const tgt = document.getElementById(b.dataset.target);
+    if(tgt) tgt.style.display='block';
+  });
+});
+
+/* ---------------------------
+  試薬秤量支援：モード切替
+----------------------------*/
+document.querySelectorAll('input[name="mode"]').forEach(r=>{
+  r.addEventListener('change', e=>{
+    document.getElementById('mode-massFromConc').style.display = e.target.value === 'massFromConc' ? 'block' : 'none';
+    document.getElementById('mode-volFromMass').style.display = e.target.value === 'volFromMass' ? 'block' : 'none';
+    document.getElementById('massOutput').innerHTML = '';
+    document.getElementById('volOutput').innerHTML = '';
+  });
+});
+
+/* ---------------------------
+  試薬秤量支援：濃度＋体積 → 質量
+----------------------------*/
+document.getElementById('calcMassBtn').addEventListener('click', ()=>{
+  const mw = parseFloat(document.getElementById('mw').value);
+  const concVal = parseFloat(document.getElementById('conc_value').value);
+  const concUnit = parseFloat(document.getElementById('conc_unit').value);
+  const volVal = parseFloat(document.getElementById('vol_value').value);
+  const volUnit = parseFloat(document.getElementById('vol_unit').value);
+
+  if(!isFinite(mw) || !isFinite(concVal) || !isFinite(volVal)){
+    alert('すべての値（モル質量・濃度・体積）を正しく入力してください。');
+    return;
+  }
+
+  // convert to base units: conc -> mol/L, vol -> L
+  const conc = concVal * concUnit;
+  const vol_L = volVal * volUnit; // since vol_unit used values mL=1e-3, µL=1e-6, nL=1e-9
+  // compute mass in grams: mass = MW * C (mol/L) * V (L)
+  const mass_g = mw * conc * vol_L;
+
+  // prepare display
+  const massStr = formatMassAuto(mass_g);
+
+  // balance recommendation
+  let balance = '';
+  if(mass_g < 0.001) balance = '電子天秤（高精度推奨）';
+  else if(mass_g <= 1000) balance = '一般天秤';
+  else balance = '大型計量（メスシリンダー等）推奨';
+
+  // compute pipette usage: we need to display the liquid volume to pipette.
+  // Usually mass is weighed and then solvent added to volume: we consider "溶媒量" = vol - (if solute occupies negligible volume) -> assume full volume to pipette.
+  // We'll show recommended pipette for the final volume (vol_L -> µL)
+  const vol_ul = vol_L * 1e6; // L -> µL
+
+  let pipetteNote = '';
+  // choose pipette for total volume:
+  if(vol_ul <= 10000){
+    // if vol_ul is large and divisible, show P1000 repeats
+    if(vol_ul > 1000){
+      const times = Math.ceil(vol_ul / 1000);
+      pipetteNote = `P1000 を ${times} 回使用（合計 ${times*1000} µL 相当）。`;
+    } else {
+      const pip = choosePipetteSingle(vol_ul);
+      pipetteNote = `推奨ピペット: ${pip}`;
+    }
+    // check splitting for 2 significant figs when vol_ul < 1000
+    if(vol_ul < 1000){
+      const split = splitFor2SigFigs(vol_ul);
+      if(split){
+        const mainP = choosePipetteSingle(split.main);
+        const restP = choosePipetteSingle(split.rest);
+        pipetteNote += `<br>有効数字2桁処理例: ${split.main}µL を ${mainP} で ${Math.ceil(split.main / (mainP==='P1000'?1000:(parseInt(mainP.replace(/\D/g,''))||1)))} 回、残り ${split.rest}µL を ${restP} で。`;
+        // a clearer human readable fallback:
+        pipetteNote += `<br>（例: 431µL → 430µL をP1000で1回 + 1µLをP2で1回）`;
+      }
+    }
+  } else {
+    pipetteNote = 'メスシリンダー推奨（>10 mL）';
+  }
+
+  document.getElementById('massOutput').innerHTML =
+    `<strong>計算結果</strong><br>
+     必要質量: <strong>${massStr}</strong><br>
+     推奨天秤: <strong>${balance}</strong><br>
+     指定体積: <strong>${volVal} ${document.getElementById('vol_unit').selectedOptions[0].text}</strong> （${Math.round(vol_ul)} µL）<br>
+     ${pipetteNote}`;
+});
+
+/* ---------------------------
+  試薬秤量支援：質量＋濃度 → 必要体積
+----------------------------*/
+document.getElementById('calcVolBtn').addEventListener('click', ()=>{
+  const massVal = parseFloat(document.getElementById('mass_value').value);
+  const massUnit = parseFloat(document.getElementById('mass_unit').value);
+  const mw = parseFloat(document.getElementById('mw2').value);
+  const concVal = parseFloat(document.getElementById('conc2_value').value);
+  const concUnit = parseFloat(document.getElementById('conc2_unit').value);
+
+  if(!isFinite(massVal) || !isFinite(mw) || !isFinite(concVal)){
+    alert('質量、モル質量、濃度を正しく入力してください。');
+    return;
+  }
+  // mass (g) = massVal * massUnit (massUnit: g,mg->1e-3? but we set g=1, mg=1e-3, ng=1e-9)
+  const mass_g = massVal * massUnit;
+  const conc = concVal * concUnit; // mol/L
+  // volume L = mass / (MW * conc)
+  const vol_L = mass_g / (mw * conc);
+  if(!(isFinite(vol_L)) || vol_L <= 0){
+    document.getElementById('volOutput').innerHTML = '<span class="danger">計算できません（値を確認してください）</span>';
+    return;
+  }
+  const vol_mL = vol_L * 1000;
+  const vol_ul = vol_mL * 1000; // µL
+
+  // pipette recommendation similar to above
+  let pipNote = '';
+  if(vol_ul <= 10000){
+    if(vol_ul > 1000){
+      const times = Math.ceil(vol_ul / 1000);
+      pipNote = `P1000 を ${times} 回使用（合計 ${times*1000} µL 相当）`;
+    } else {
+      const pip = choosePipetteSingle(vol_ul);
+      pipNote = `推奨ピペット: ${pip}`;
+      // splitting
+      const split = splitFor2SigFigs(vol_ul);
+      if(split){
+        const mainP = choosePipetteSingle(split.main);
+        const restP = choosePipetteSingle(split.rest);
+        pipNote += `<br>有効数字2桁処理例: ${split.main}µL を ${mainP}、残り ${split.rest}µL を ${restP}。`;
+      }
+    }
+  } else {
+    pipNote = 'メスシリンダー推奨（>10 mL）';
+  }
+
+  document.getElementById('volOutput').innerHTML =
+    `<strong>計算結果</strong><br>
+     必要体積: <strong>${roundTo(vol_mL,3)} mL</strong> （${Math.round(vol_ul)} µL）<br>
+     ${pipNote}`;
+});
+
+/* ---------------------------
+  試薬調整支援（動的テーブル）
+----------------------------*/
+const reagentTbody = document.querySelector('#reagentTable tbody');
+document.getElementById('addReagent').addEventListener('click', addReagentRow);
+function addReagentRow(name='', initConc='', targetConc=''){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="r-name" value="${name}" placeholder="A"></td>
+    <td><input type="number" class="r-init" step="any" value="${initConc}" style="width:90px"> 
+        <select class="r-init-unit">
+          <option value="1">M</option>
+          <option value="1e-3">mM</option>
+          <option value="1e-6" selected>µM</option>
+          <option value="1e-9">nM</option>
+        </select>
+    </td>
+    <td><input type="number" class="r-target" step="any" value="${targetConc}" placeholder="空欄可" style="width:90px">
+        <select class="r-target-unit">
+          <option value="1">M</option>
+          <option value="1e-3">mM</option>
+          <option value="1e-6" selected>µM</option>
+          <option value="1e-9">nM</option>
+        </select>
+    </td>
+    <td class="r-vol">—</td>
+    <td><button class="removeRow">削除</button></td>
+  `;
+  reagentTbody.appendChild(tr);
+  tr.querySelector('.removeRow').addEventListener('click', ()=> tr.remove());
+}
+
+// 初期1行
+addReagentRow('A','10','2');
+
+document.getElementById('calcMix').addEventListener('click', ()=>{
+  const totalVal = parseFloat(document.getElementById('mix_total_value').value);
+  const totalUnit = parseFloat(document.getElementById('mix_total_unit').value);
+  if(!isFinite(totalVal) || totalVal <= 0){ alert('最終全量を入力してください'); return; }
+  const total_L = totalVal * totalUnit; // mL->L? we used mL=1e-3, µL=1e-6 so total_L is in L
+  const rows = Array.from(reagentTbody.querySelectorAll('tr'));
+  // First, compute requested volumes for reagents that have target conc specified
+  let totalAssignedVolume_L = 0;
+  const reagents = [];
+  for(const r of rows){
+    const name = r.querySelector('.r-name').value || 'X';
+    const init = parseFloat(r.querySelector('.r-init').value);
+    const initUnit = parseFloat(r.querySelector('.r-init-unit').value);
+    const target = r.querySelector('.r-target').value === '' ? null : parseFloat(r.querySelector('.r-target').value);
+    const targetUnit = r.querySelector('.r-target-unit').value ? parseFloat(r.querySelector('.r-target-unit').value) : 1;
+    if(!isFinite(init) || init <= 0){ r.querySelector('.r-vol').textContent = '初濃度未入力'; reagents.push({name, ok:false}); continue; }
+    const initM = init * initUnit;
+    let targetM = null;
+    if(target !== null && target !== '') targetM = target * targetUnit;
+    reagents.push({row:r, name, initM, targetM, initRaw:init, targetRaw:target});
+  }
+
+  // For each reagent with targetM specified: required volume = (targetM * total_L) / initM
+  // total_L is in L (because units set to mL=1e-3, µL=1e-6 etc). But ensure consistency: if total unit was µL (1e-6), total_L = value*1e-6 -> L, good.
+  for(const reg of reagents){
+    if(reg.targetM && reg.initM){
+      const vol_L = (reg.targetM * total_L) / reg.initM;
+      reg.required_L = vol_L;
+      totalAssignedVolume_L += vol_L;
+    } else {
+      reg.required_L = null;
+    }
+  }
+  // remaining volume for solvant:
+  const remain_L = total_L - totalAssignedVolume_L;
+  // Display results and compute actual final concentrations (for reagents where user didn't specify target but we included volume manually? We'll compute final concs based on assigned volumes)
+  let html = `<strong>計算結果</strong><br>`;
+  html += `最終全量: ${totalVal} ${document.getElementById('mix_total_unit').selectedOptions[0].text}（${(total_L*1e6).toFixed(0)} µL）<br>`;
+  html += `<table><thead><tr><th>試薬</th><th>初濃度</th><th>指定終濃度</th><th>必要量</th><th>最終濃度（計算）</th></tr></thead><tbody>`;
+  for(const reg of reagents){
+    const tr = reg.row;
+    const dispInit = reg.initRaw + ' ' + '（' + unitNameFromFactor(reg.initM/reg.initRaw) + '）';
+    if(reg.required_L !== null){
+      const vol_ul = reg.required_L * 1e6;
+      tr.querySelector('.r-vol').innerHTML = `${Math.round(vol_ul)} µL`;
+      const finalConc = (reg.initM * reg.required_L) / total_L; // mol/L
+      html += `<tr><td>${reg.name}</td><td>${reg.initRaw} ${unitNameFromFactor(reg.initM/reg.initRaw)}</td><td>${reg.targetRaw} ${unitNameFromFactor(reg.targetM/reg.targetRaw)}</td><td>${Math.round(vol_ul)} µL（推奨: ${choosePipetteSingle(vol_ul)}）</td><td>${formatConc(finalConc)}</td></tr>`;
+    } else {
+      tr.querySelector('.r-vol').innerHTML = '—';
+      html += `<tr><td>${reg.name}</td><td>${reg.initRaw} ${unitNameFromFactor(reg.initM/reg.initRaw)}</td><td>（未指定）</td><td>—</td><td>自動計算なし</td></tr>`;
+    }
+  }
+  html += `</tbody></table>`;
+  html += `<div style="margin-top:8px">割り当て済み試薬合計: ${(totalAssignedVolume_L*1e6).toFixed(0)} µL、残り（溶媒）: ${(remain_L*1e6).toFixed(0)} µL</div>`;
+
+  // If remain_L < 0 -> error
+  if(remain_L < -1e-12){
+    html += `<div class="danger"><strong>エラー:</strong> 指定した終濃度の合計が最終全量を超えています。指定値を見直してください。</div>`;
+  } else {
+    if(remain_L >= 0){
+      // if remain positive, suggest adding solvent with appropriate pipette or cylinder
+      const remain_ul = Math.round(remain_L * 1e6);
+      const pip = choosePipetteSingle(remain_ul);
+      html += `<div class="ok">溶媒量: ${remain_ul} µL（推奨: ${pip}）</div>`;
+    }
+  }
+
+  document.getElementById('mixResult').innerHTML = html;
+});
+
+function unitNameFromFactor(f){
+  // This function tries to infer unit name from factor: not perfect but used for display in table
+  if(f === 1) return 'M';
+  if(f === 1e-3) return 'mM';
+  if(f === 1e-6) return 'µM';
+  if(f === 1e-9) return 'nM';
+  if(f === 1e-3) return 'mg';
+  return '';
+}
+
+function formatConc(molL){
+  if(!isFinite(molL) || molL===0) return '0';
+  if(molL >= 1) return `${roundTo(molL,3)} M`;
+  if(molL >= 1e-3) return `${roundTo(molL*1e3,3)} mM`;
+  if(molL >= 1e-6) return `${roundTo(molL*1e6,3)} µM`;
+  return `${roundTo(molL*1e9,3)} nM`;
+}
+
+/* ---------------------------
+  培養時間支援
+----------------------------*/
+document.getElementById('calcCulture').addEventListener('click', () => {
+  const startStr = document.getElementById('culture_start').value;  // 投入時刻
+  const endStr = document.getElementById('culture_end').value;      // 回収時刻（翌日）
+  const temp = parseFloat(document.getElementById('culture_temp').value);
+  const rpm = parseFloat(document.getElementById('culture_rpm').value);
+  const durationHours = parseFloat(document.getElementById('culture_duration').value);
+
+  if (!startStr || !endStr || !isFinite(temp) || !isFinite(rpm) || !isFinite(durationHours)) {
+    alert('すべての入力（投入時刻・回収時刻・温度・rpm・培養時間）を入力してください。');
+    return;
+  }
+
+  //時刻をHourとMinに分ける。
+  const [startH, startM] = startStr.split(":").map(Number);
+  const [endH, endM] = endStr.split(":").map(Number);
+
+  //分単位に変換
+  let startTotal = startH * 60 + startM;
+  let endTotal = endH * 60 + endM + 24 * 60; // 翌日回収を考慮（+24h）
+
+  // 培養器内にある時間を算出（分単位）
+  const cultureTotal = endTotal - startTotal;
+
+  // 培養開始時刻（分単位）
+  const cultureStartMin = endTotal - durationHours * 60;
+ 
+  //分→時刻(h:mm)変換関数
+  const formatTime = (min) => {
+    const total = min % (24 * 60);
+    const hour = Math.floor(total / 60);
+    const minute = total % 60;
+    const label = min >= 24 * 60 ? "翌日 " : "";
+    return `${label}${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  };
+
+  //HTML生成
+  let html = `<strong>プログラム培養設定</strong><br>`;
+  html += `<table><tbody>`;
+  html += `<tr><td>プログラム</td>      <td>温度</td>       <td>回転速度</td>     <td>時間</td>                                           <td>時間の詳細</td></tr>`;  
+  html += `<tr><td>#1 開始前保冷</td>   <td>４℃</td>       <td>0 rpm</td>       <td>${formatTime(cultureStartMin - 60-startTotal)}</td> <td>${formatTime(startTotal)}～${formatTime(cultureStartMin - 60)}</td></tr>`;
+  html += `<tr><td>#2 温度立ち上げ</td> <td>${temp}℃</td>  <td>0 rpm</td>       <td>00:30</td>                                          <td>${formatTime(cultureStartMin - 60)}～${formatTime(cultureStartMin-30)}</td></tr>`;
+  html += `<tr><td>#3 培養</td>        <td>${temp}℃</td>  <td>${rpm} rpm</td>  <td>${formatTime(durationHours * 60)}</td>              <td>${formatTime(cultureStartMin-30)}〜${formatTime(endTotal-30)}</td></tr>`;
+  html += `<tr><td>#4 終了後保冷</td>   <td>４℃</td>       <td>0 rpm</td>       <td>00:30</td>                                          <td>${formatTime(endTotal-30)}～${formatTime(endTotal)}</td></tr>`;
+  html += `</tbody></table>`;
+
+  // 結果表示
+  document.getElementById('culturePlan').innerHTML = html;
+});
+
+
+/* ---------------------------
+  ヘルパー：画面初期化（イベント等）
+----------------------------*/
+(function init(){
+  // nothing much
+})();
+</script>
+</body>
+</html>
